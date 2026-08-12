@@ -668,7 +668,12 @@ describe("builtin Integer type", () => {
         typeName: "NullableIntegerArrayConfig",
       });
       const values = (result.jsonSchema.properties as Record<string, unknown>)["values"];
-      expect(JSON.stringify(values)).toContain('"minimum":0');
+      // Per design 002 §4.3 and design 003 §2.4, the numeric constraint belongs
+      // on the immediate item schema, not the array container.
+      expect(values).toEqual({
+        type: "array",
+        items: { oneOf: [{ $ref: "#/$defs/Integer" }, { type: "null" }], minimum: 0 },
+      });
     });
   });
 });

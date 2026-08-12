@@ -101,6 +101,13 @@ describe("Array Constraints — comprehensive", () => {
     });
   });
 
+  it('statusHistory: @const "draft" on a literal-union array preserves the items enum', () => {
+    expect(properties["statusHistory"]).toEqual({
+      type: "array",
+      items: { enum: ["draft", "sent"], const: "draft" },
+    });
+  });
+
   it("unconstrained: number[] → array of numbers", () => {
     expect(properties["unconstrained"]).toEqual({
       type: "array",
@@ -123,7 +130,7 @@ describe("Array Constraints — comprehensive", () => {
 
   it("all fields are required (all have ! not ?)", () => {
     const required = schema["required"] as string[];
-    expect(required).toHaveLength(10);
+    expect(required).toHaveLength(11);
     expect(required).toEqual(
       expect.arrayContaining([
         "nonEmpty",
@@ -136,6 +143,7 @@ describe("Array Constraints — comprehensive", () => {
         "unconstrained",
         "nonNegativeItems",
         "constantItems",
+        "statusHistory",
       ])
     );
   });

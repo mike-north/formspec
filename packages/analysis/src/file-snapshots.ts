@@ -287,6 +287,33 @@ function findExtensionTypesByName(
   return matches;
 }
 
+/**
+ * Selects the registrations eligible to broaden a built-in tag at this
+ * terminal. A registered terminal is opaque: when none of its registrations
+ * broaden the tag, callers must not inspect an array item registration.
+ */
+function findBroadeningTargetTypes(
+  subjectType: ts.Type,
+  checker: ts.TypeChecker,
+  extensionDefinitions: readonly ExtensionDefinition[],
+  capability: Parameters<typeof _getConstraintTargetType>[0]
+): NonNullable<ExtensionDefinition["types"]> {
+  const normalizedSubjectType = stripNullishUnion(subjectType);
+  const terminalMatches = findMatchingExtensionTypes(
+    normalizedSubjectType,
+    checker,
+    extensionDefinitions
+  );
+  if (terminalMatches.length > 0) {
+    return terminalMatches;
+  }
+
+  const effectiveType = stripNullishUnion(
+    _getConstraintTargetType(capability, normalizedSubjectType, checker)
+  );
+  return findMatchingExtensionTypes(effectiveType, checker, extensionDefinitions);
+}
+
 function hasExtensionBroadening(
   tagName: string,
   subjectType: ts.Type,
@@ -298,30 +325,9 @@ function hasExtensionBroadening(
     return false;
   }
 
-  const normalizedSubjectType = stripNullishUnion(subjectType);
-  // Container broadenings on registered array aliases take precedence for
-  // non-container tags; otherwise inspect exactly one immediate item.
-  if (capability !== "array-like") {
-    const containerMatches = findMatchingExtensionTypes(
-      normalizedSubjectType,
-      checker,
-      extensionDefinitions
-    );
-    if (
-      containerMatches.some((type) =>
-        (type.builtinConstraintBroadenings ?? []).some(
-          (broadening) => broadening.tagName === tagName
-        )
-      )
-    ) {
-      return true;
-    }
-  }
-  const effectiveType = stripNullishUnion(
-    _getConstraintTargetType(capability, normalizedSubjectType, checker)
-  );
-  return findMatchingExtensionTypes(effectiveType, checker, extensionDefinitions).some((type) =>
-    (type.builtinConstraintBroadenings ?? []).some((broadening) => broadening.tagName === tagName)
+  return findBroadeningTargetTypes(subjectType, checker, extensionDefinitions, capability).some(
+    (type) =>
+      (type.builtinConstraintBroadenings ?? []).some((broadening) => broadening.tagName === tagName)
   );
 }
 
@@ -365,31 +371,20 @@ function resolveExtensionCustomTypeId(
     return undefined;
   }
 
-  const normalizedSubjectType = stripNullishUnion(subjectType);
-  if (!["minItems", "maxItems", "uniqueItems"].includes(constraintName)) {
-    const containerMatches = findMatchingExtensionTypes(
-      normalizedSubjectType,
-      checker,
-      extensionDefinitions
-    );
-    const containerBroadening = containerMatches.find((type) =>
-      (type.builtinConstraintBroadenings ?? []).some(
-        (broadening) => broadening.tagName === constraintName
-      )
-    );
-    if (containerBroadening !== undefined) {
-      return containerBroadening.typeName;
-    }
-  }
-
   const capability = ["minItems", "maxItems", "uniqueItems"].includes(constraintName)
     ? "array-like"
     : undefined;
-  const effectiveType = stripNullishUnion(
-    _getConstraintTargetType(capability, normalizedSubjectType, checker)
+  const match = findBroadeningTargetTypes(
+    subjectType,
+    checker,
+    extensionDefinitions,
+    capability
+  ).find((type) =>
+    (type.builtinConstraintBroadenings ?? []).some(
+      (broadening) => broadening.tagName === constraintName
+    )
   );
-  const matches = findMatchingExtensionTypes(effectiveType, checker, extensionDefinitions);
-  return matches.length === 1 ? matches[0]?.typeName : undefined;
+  return match?.typeName;
 }
 
 /**

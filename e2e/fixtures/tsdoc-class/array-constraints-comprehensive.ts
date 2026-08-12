@@ -26,5 +26,8 @@ export class ArrayConstraintsForm {
   /** @const "USD" */
   constantItems!: string[];
 
+  /** @const "draft" */
+  statusHistory!: ("draft" | "sent")[];
+
   unconstrained!: number[];
 }

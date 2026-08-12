@@ -10,6 +10,7 @@ import { scanFormSpecTags } from "../../utils/tag-scanner.js";
 import { getTagMetadata } from "../../utils/tag-metadata.js";
 import {
   _capabilityLabel,
+  _getConstraintTargetType,
   getTagDefinition,
   hasTypeSemanticCapability,
   readExtensionRegistryFromSettings,
@@ -97,16 +98,17 @@ export const tagTypeCheck = createRule<[], MessageIds>({
 
         const resolved = resolveTagTarget(tag, declarationType, services);
         if (!resolved.valid || !resolved.type) continue;
-        if (hasTypeSemanticCapability(resolved.type, checker, requiredCapability)) continue;
+        const effectiveType = _getConstraintTargetType(requiredCapability, resolved.type, checker);
+        if (hasTypeSemanticCapability(effectiveType, checker, requiredCapability)) continue;
 
-        // Check for builtin constraint broadening via extension registry.
-        // Use checker.typeToString for the name — it correctly resolves
-        // type aliases (e.g., `type Decimal = ...` → "Decimal").
+        // Check broadening against the same effective target used by the
+        // built-in capability check. For non-container tags on arrays, this is
+        // exactly one immediate item layer.
         if (
           registry?.findTypeByName !== undefined &&
           registry.findBuiltinConstraintBroadening !== undefined
         ) {
-          const typeName = checker.typeToString(resolved.type);
+          const typeName = checker.typeToString(effectiveType);
           const typeResult = registry.findTypeByName(typeName);
           if (typeResult !== undefined) {
             const typeId = `${typeResult.extensionId}/${typeResult.registration.typeName}`;
@@ -122,7 +124,7 @@ export const tagTypeCheck = createRule<[], MessageIds>({
             tag: tag.rawName,
             expected: _capabilityLabel(requiredCapability),
             field: fieldName,
-            actualType: getResolvedTypeName(resolved.type, services),
+            actualType: getResolvedTypeName(effectiveType, services),
           },
         });
       }

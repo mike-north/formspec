@@ -143,6 +143,41 @@ const decimalVectorExtension: ExtensionDefinition = defineExtension({
     }),
   ],
 });
+const opaqueDecimalVectorExtension: ExtensionDefinition = defineExtension({
+  extensionId: "x-test/broadening-396-opaque-vector",
+  types: [
+    defineCustomType({
+      typeName: "DecimalVector",
+      tsTypeNames: ["DecimalVector"],
+      toJsonSchema: () => ({ type: "array", items: { type: "string" } }),
+    }),
+  ],
+});
+const alternateDecimalExtension: ExtensionDefinition = defineExtension({
+  extensionId: "x-test/broadening-396-alternate-decimal",
+  types: [
+    defineCustomType({
+      typeName: "AlternateDecimal",
+      tsTypeNames: ["Decimal"],
+      builtinConstraintBroadenings: [
+        {
+          tagName: "minimum",
+          constraintName: "AlternateDecimalMinimum",
+          parseValue: (raw) => raw.trim(),
+        },
+      ],
+      toJsonSchema: () => ({ type: "string", format: "alternate-decimal" }),
+    }),
+  ],
+  constraints: [
+    defineConstraint({
+      constraintName: "AlternateDecimalMinimum",
+      compositionRule: "intersect",
+      applicableTypes: ["custom"],
+      toJsonSchema: (payload) => ({ alternateDecimalMinimum: payload }),
+    }),
+  ],
+});
 
 // =============================================================================
 // Helper: build a snapshot over a single-declaration source and return the
@@ -204,6 +239,30 @@ describe("snapshot consumer constraint broadening (issue #396)", () => {
     expect(customFact?.targetPath).toBeNull();
     expect(customFact?.constraintId).toBe(`${DECIMAL_EXTENSION_ID}/DecimalMinimum`);
     expect(customFact?.payload).toBe("10");
+  });
+
+  it("uses the first broadening when multiple registrations match the same TS type", () => {
+    const source = [
+      "type Decimal = string & { readonly __decimalBrand: true };",
+      "class Foo {",
+      "  /** @minimum 10 */",
+      "  amount!: Decimal;",
+      "}",
+    ].join("\n");
+    const snapshot = buildSnapshot(
+      source,
+      [decimalExtension, alternateDecimalExtension],
+      "/virtual/broadening-duplicate-registration.ts"
+    );
+
+    expect(
+      snapshot.diagnostics.filter((diagnostic) => diagnostic.code === "TYPE_MISMATCH")
+    ).toEqual([]);
+    const facts = snapshot.comments[0]?.declarationSummary.facts ?? [];
+    expect(findCustomConstraintFact(facts)).toMatchObject({
+      constraintId: `${DECIMAL_EXTENSION_ID}/DecimalMinimum`,
+      payload: "10",
+    });
   });
 
   it("broadens @minimum on direct and path-targeted Decimal array items", () => {
@@ -482,5 +541,26 @@ describe("snapshot consumer constraint broadening (issue #396)", () => {
       constraintId: "x-test/broadening-396-vector/DecimalVectorMinimum",
       payload: "10",
     });
+  });
+
+  it("does not fall back to item broadening through a registered path terminal", () => {
+    const source = [
+      "type Decimal = string & { readonly __decimalBrand: true };",
+      "type DecimalVector = Decimal[];",
+      "type Ledger = { amounts: DecimalVector };",
+      "class Foo {",
+      "  /** @minimum :amounts 10 */",
+      "  ledger!: Ledger;",
+      "}",
+    ].join("\n");
+    const snapshot = buildSnapshot(
+      source,
+      [decimalExtension, opaqueDecimalVectorExtension],
+      "/virtual/opaque-vector-path.ts"
+    );
+
+    expect(snapshot.diagnostics).toContainEqual(expect.objectContaining({ code: "TYPE_MISMATCH" }));
+    const facts = snapshot.comments[0]?.declarationSummary.facts ?? [];
+    expect(findCustomConstraintFact(facts)).toBeUndefined();
   });
 });

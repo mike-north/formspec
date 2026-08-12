@@ -124,21 +124,7 @@ const NON_APPLICABLE_SURFACES: readonly SurfaceException[] = [
   },
 ];
 
-const KNOWN_DIVERGENCES: readonly KnownDivergence[] = [
-  {
-    fixtureLabel: "@minLength 1 on string array",
-    expectedCodesByConsumer: {
-      build: [],
-      snapshot: [],
-      eslint: ["TYPE_MISMATCH"],
-      "language-server": [],
-    },
-    reason:
-      "tag-type-check treats @minLength as string-only while the other consumers preserve current array behavior.",
-    followUp:
-      "Remove this divergence and add an array-length case to MESSAGE_EQUIVALENCE_FIXTURES once shared analysis owns the intended behavior.",
-  },
-];
+const KNOWN_DIVERGENCES: readonly KnownDivergence[] = [];
 
 const DIAGNOSTIC_CODE_FIXTURES: readonly ParityFixture[] = [
   fixture("@minimum 0 on number", "minimum", "number", "0"),
@@ -148,6 +134,7 @@ const DIAGNOSTIC_CODE_FIXTURES: readonly ParityFixture[] = [
   }),
   fixture("@minimum 0 on nullable number", "minimum", "number | null", "0"),
   fixture("@minimum 0 on optional number", "minimum", "number | undefined", "0"),
+  fixture("@minimum 0 on number array", "minimum", "number[]", "0"),
   fixture("@maximum 100 on number", "maximum", "number", "100"),
   fixture("@maximum 100 on string", "maximum", "string", "100"),
   fixture("@minLength 1 on string", "minLength", "string", "1"),
@@ -159,6 +146,7 @@ const DIAGNOSTIC_CODE_FIXTURES: readonly ParityFixture[] = [
   fixture("@enumOptions on string", "enumOptions", "string", '["a", "b"]'),
   fixture("@enumOptions on number", "enumOptions", "number", '["a", "b"]'),
   fixture('@const "USD" on string', "const", "string", '"USD"'),
+  fixture('@const "USD" on string array', "const", "string[]", '"USD"'),
   fixture('@const "USD" on string literal union', "const", '"USD" | "EUR"', '"USD"'),
   fixture('@const "XYZ" on string literal union', "const", '"USD" | "EUR"', '"XYZ"'),
   fixture(
@@ -182,8 +170,8 @@ const DIAGNOSTIC_CODE_FIXTURES: readonly ParityFixture[] = [
   }),
 ];
 
-// Array-length author mistakes are pinned in KNOWN_DIVERGENCES until current
-// @minLength string[] behavior is normalized across all four consumers.
+// Invalid placements use message-equivalence fixtures after code parity establishes
+// that every consumer reports the same diagnostic family.
 const MESSAGE_EQUIVALENCE_FIXTURES: readonly ParityFixture[] = [
   fixture("numeric tag on string: minimum", "minimum", "string", "0"),
   fixture("numeric tag on string: maximum", "maximum", "string", "100"),

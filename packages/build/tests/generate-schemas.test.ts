@@ -450,6 +450,37 @@ describe("generateSchemas", () => {
       fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
     }
   });
+
+  it("emits property-level path targets declared inside a nested interface", () => {
+    const filePath = writeTempSource(`
+      export interface Money {
+        value: number;
+        currency: string;
+      }
+
+      export interface LineItem {
+        /** @minimum :value 0 */
+        price: Money;
+      }
+
+      export interface CheckoutForm {
+        item: LineItem;
+      }
+    `);
+
+    try {
+      const result = generateSchemasOrThrow({ filePath, typeName: "CheckoutForm" });
+      const lineItem = result.jsonSchema.$defs?.["LineItem"];
+
+      // Per design 003 §5.4, the property constraint refines Money.value beside its $ref.
+      expect(lineItem?.properties?.["price"]).toEqual({
+        $ref: "#/$defs/Money",
+        properties: { value: { minimum: 0 } },
+      });
+    } finally {
+      fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
+    }
+  });
 });
 
 describe("generateJsonSchema", () => {

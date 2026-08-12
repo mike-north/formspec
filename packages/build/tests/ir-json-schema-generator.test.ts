@@ -2437,6 +2437,53 @@ describe("generateJsonSchemaFromIR", () => {
       });
     });
 
+    it("routes path-targeted constraints carried by an object property", () => {
+      const priceProperty: ObjectProperty = {
+        name: "price",
+        type: { kind: "reference", name: "MonetaryAmount", typeArguments: [] },
+        optional: false,
+        constraints: [
+          {
+            kind: "constraint",
+            constraintKind: "minimum",
+            value: 0,
+            path: { segments: ["value"] },
+            provenance: {
+              surface: "tsdoc",
+              file: "/test.ts",
+              line: 1,
+              column: 0,
+              tagName: "@minimum",
+            },
+          },
+        ],
+        annotations: [],
+        provenance: PROVENANCE,
+      };
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [
+          makeField(
+            "lineItem",
+            { kind: "object", properties: [priceProperty], additionalProperties: false },
+            true
+          ),
+        ],
+        typeRegistry: MONETARY_AMOUNT_REGISTRY,
+        provenance: PROVENANCE,
+      };
+
+      const schema = generateJsonSchemaFromIR(ir);
+      const lineItem = schema.properties?.["lineItem"];
+
+      // Per design 003 §5.4, the use-site refinement is a sibling of the reference.
+      expect(lineItem?.properties?.["price"]).toEqual({
+        $ref: "#/$defs/MonetaryAmount",
+        properties: { value: { minimum: 0 } },
+      });
+    });
+
     it("applies path-targeted constraints directly to inline object properties", () => {
       const ir: FormIR = {
         kind: "form-ir",
