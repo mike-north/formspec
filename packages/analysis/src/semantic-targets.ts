@@ -542,13 +542,8 @@ function findGoverningConstraintTagRegistration(
   return tagRegistration.registration;
 }
 
-/**
- * Returns whether a custom constraint targets an array container rather than
- * its immediate item type.
- *
- * @internal
- */
-export function _customConstraintTargetsArrayContainer(
+/** Returns whether a custom constraint targets an array container rather than its items. */
+function customConstraintTargetsArrayContainer(
   constraint: ConstraintNode,
   arrayType: TypeNode,
   extensionRegistry: ConstraintRegistryLike | undefined
@@ -1244,7 +1239,7 @@ function resolveConstraintTargetType(
 
   if (
     constraint.constraintKind === "custom" &&
-    _customConstraintTargetsArrayContainer(constraint, containerType, extensionRegistry)
+    customConstraintTargetsArrayContainer(constraint, containerType, extensionRegistry)
   ) {
     return containerType;
   }
