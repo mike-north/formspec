@@ -1,6 +1,6 @@
 {
   "name": "@formspec/config",
-  "version": "0.1.0-alpha.69",
+  "version": "0.1.0-alpha.70",
   "description": "Unified configuration for FormSpec - extensions, constraints, metadata, pipeline settings, and DSL-policy validation",
   "repository": {
     "type": "git",
