@@ -43,6 +43,10 @@ jobs:
       # exchange, and every publish fails with E404 (npm/documentation#1960).
       # registry.npmjs.org is npm's default registry and `access: public`
       # comes from .changeset/config.json, so nothing depends on this input.
+      #
+      # Unlike ci.yml, this job does not cache the pnpm store. Releases run
+      # rarely, so the cache saves little, and a cold install keeps the bits
+      # that get published dependent only on the lockfile.
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -59,10 +63,13 @@ jobs:
               console.error(`npm ${process.argv[1]} is too old; trusted publishing needs >= 11.5.1`);
               process.exit(1);
             }' "$(npm --version)"
-          # Regression guard for npm/documentation#1960: any _authToken entry
-          # here suppresses the OIDC exchange.
-          if [ -f "$HOME/.npmrc" ] && grep -q '_authToken' "$HOME/.npmrc"; then
-            echo "::error::_authToken present in ~/.npmrc; the OIDC exchange will be skipped"
+          # Regression guard for npm/documentation#1960. Matches credentials
+          # scoped to registry.npmjs.org and unscoped ones (which apply to the
+          # default registry — also npmjs), since either suppresses the OIDC
+          # exchange. Credentials for other registries are left alone.
+          if [ -f "$HOME/.npmrc" ] &&
+            grep -qE '^(//registry\.npmjs\.org/:)?_auth(Token)?=' "$HOME/.npmrc"; then
+            echo "::error::npmjs credentials present in ~/.npmrc; the OIDC exchange will be skipped"
             exit 1
           fi
 
