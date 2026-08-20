@@ -1,4 +1,4 @@
-export declare const __integerBrand: unique symbol;
+declare const __integerBrand: unique symbol;
 
 export type Integer = number & {
   readonly [__integerBrand]: true;
