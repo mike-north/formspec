@@ -20,6 +20,7 @@
  */
 
 import { RuleTester } from "@typescript-eslint/rule-tester";
+import { fileURLToPath } from "node:url";
 import { tagTypeCheck } from "../../src/rules/type-compatibility/tag-type-check.js";
 import * as vitest from "vitest";
 
@@ -37,6 +38,10 @@ const ruleTester = new RuleTester({
     },
   },
 });
+
+const numericConstraintConsumerPath = fileURLToPath(
+  new URL("../fixtures/numeric-constraint-types/consumer.ts", import.meta.url)
+);
 
 // ---------------------------------------------------------------------------
 // Mock extension registry for broadening tests
@@ -479,6 +484,59 @@ ruleTester.run("tag-type-check", tagTypeCheck, {
           count!: number;
         }
       `,
+    },
+
+    // Imported numeric brands retain their semantic capability through
+    // optional and nullable wrappers without extension-registry broadening.
+    {
+      filename: numericConstraintConsumerPath,
+      code: `
+        import type { Integer } from "./types.js";
+
+        class NumericConstraintConsumer {
+          /** @minimum 0 */
+          integer!: Integer;
+
+          /** @maximum 100 */
+          optionalInteger?: Integer;
+
+          /** @exclusiveMinimum 0 */
+          nullableInteger!: Integer | null;
+
+          /** @exclusiveMaximum 100 @multipleOf 1 */
+          nullishInteger!: Integer | null | undefined;
+        }
+      `,
+    },
+    // Registered custom types use the same fixture to exercise project-service
+    // module resolution independently from the built-in classifier.
+    {
+      filename: numericConstraintConsumerPath,
+      code: `
+        import type { Decimal } from "./types.js";
+
+        class NumericConstraintConsumer {
+          /** @minimum 0 */
+          decimal!: Decimal;
+
+          /** @minimum 0 */
+          optionalDecimal?: Decimal;
+
+          /** @minimum 0 */
+          nullableDecimal!: Decimal | null;
+
+          /** @minimum 0 */
+          nullishDecimal!: Decimal | null | undefined;
+
+          /** @minimum 0 */
+          prices!: (Decimal | null)[];
+        }
+      `,
+      settings: {
+        formspec: {
+          extensionRegistry: mockRegistryWithDecimal,
+        },
+      },
     },
 
     // -------------------------------------------------------------------------
@@ -1000,6 +1058,24 @@ ruleTester.run("tag-type-check", tagTypeCheck, {
         class Form {
           /** @maximum 100 */
           price!: Decimal;
+        }
+      `,
+      settings: {
+        formspec: {
+          extensionRegistry: mockRegistryWithDecimal,
+        },
+      },
+      errors: [{ messageId: "typeMismatch" }],
+    },
+    // Nullish normalization must not broaden a wider union.
+    {
+      filename: numericConstraintConsumerPath,
+      code: `
+        import type { Decimal } from "./types.js";
+
+        class Form {
+          /** @minimum 0 */
+          price!: Decimal | string | null;
         }
       `,
       settings: {
