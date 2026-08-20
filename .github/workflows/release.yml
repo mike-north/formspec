@@ -30,22 +30,48 @@ jobs:
       # OIDC trusted publishing currently depends on pnpm 10.x behavior:
       # `pnpm publish` (via `changeset publish`) delegates to the Node-bundled
       # npm CLI (>= 11.5.1 on Node 24), which performs the OIDC token
-      # exchange and tolerates the unresolved ${NODE_AUTH_TOKEN} placeholder
-      # setup-node writes to .npmrc. pnpm v11 publishes natively and has open
-      # OIDC regressions (pnpm/pnpm#11513) — verify trusted publishing still
-      # works before bumping the root packageManager field to pnpm 11+.
+      # exchange. pnpm v11 publishes natively and has open OIDC regressions
+      # (pnpm/pnpm#11513) — verify trusted publishing still works before
+      # bumping the root packageManager field to pnpm 11+.
       - name: Setup pnpm
         uses: pnpm/action-setup@v5
 
+      # `registry-url` is deliberately omitted. It makes setup-node write
+      # `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` into ~/.npmrc,
+      # which expands to an *empty* token under OIDC (no NODE_AUTH_TOKEN is
+      # set). npm then treats auth as already configured, skips the OIDC
+      # exchange, and every publish fails with E404 (npm/documentation#1960).
+      # registry.npmjs.org is npm's default registry and `access: public`
+      # comes from .changeset/config.json, so nothing depends on this input.
+      #
+      # Unlike ci.yml, this job does not cache the pnpm store. Releases run
+      # rarely, so the cache saves little, and a cold install keeps the bits
+      # that get published dependent only on the lockfile.
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: "24"
-          registry-url: "https://registry.npmjs.org"
           package-manager-cache: false
 
-      - name: Show release toolchain
-        run: node --version && npm --version && pnpm --version
+      - name: Verify release toolchain
+        run: |
+          node --version && npm --version && pnpm --version
+          # npm >= 11.5.1 is required for OIDC trusted publishing. Fail loudly
+          # rather than silently falling back to an unauthenticated publish.
+          node -e 'const [a, b, c] = process.argv[1].split(".").map(Number);
+            if (a < 11 || (a === 11 && (b < 5 || (b === 5 && c < 1)))) {
+              console.error(`npm ${process.argv[1]} is too old; trusted publishing needs >= 11.5.1`);
+              process.exit(1);
+            }' "$(npm --version)"
+          # Regression guard for npm/documentation#1960. Matches credentials
+          # scoped to registry.npmjs.org and unscoped ones (which apply to the
+          # default registry — also npmjs), since either suppresses the OIDC
+          # exchange. Credentials for other registries are left alone.
+          if [ -f "$HOME/.npmrc" ] &&
+            grep -qE '^(//registry\.npmjs\.org/:)?_auth(Token)?=' "$HOME/.npmrc"; then
+            echo "::error::npmjs credentials present in ~/.npmrc; the OIDC exchange will be skipped"
+            exit 1
+          fi
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
