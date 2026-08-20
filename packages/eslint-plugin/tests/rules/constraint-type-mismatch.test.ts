@@ -46,8 +46,14 @@ const numericConstraintConsumerPath = fileURLToPath(
 // ---------------------------------------------------------------------------
 // Mock extension registry for broadening tests
 // ---------------------------------------------------------------------------
-// Simulates a registry where "Decimal" is a custom type with a builtin
-// constraint broadening for the "minimum" tag (numeric-comparable).
+// Simulates a registry where "Decimal" is a custom type with builtin
+// constraint broadenings for all numeric bound tags.
+const decimalBoundTags: Readonly<Record<string, true>> = {
+  minimum: true,
+  maximum: true,
+  exclusiveMinimum: true,
+  exclusiveMaximum: true,
+};
 const mockRegistryWithDecimal = {
   findTypeByName(typeName: string) {
     if (typeName === "Decimal") {
@@ -59,8 +65,8 @@ const mockRegistryWithDecimal = {
     return undefined;
   },
   findBuiltinConstraintBroadening(typeId: string, tagName: string) {
-    if (typeId === "x-test/Decimal" && tagName === "minimum") {
-      return { extensionId: "x-test", registration: { tagName: "minimum" } };
+    if (typeId === "x-test/Decimal" && decimalBoundTags[tagName] === true) {
+      return { extensionId: "x-test", registration: { tagName } };
     }
     return undefined;
   },
@@ -519,13 +525,13 @@ ruleTester.run("tag-type-check", tagTypeCheck, {
           /** @minimum 0 */
           decimal!: Decimal;
 
-          /** @minimum 0 */
+          /** @maximum 100 */
           optionalDecimal?: Decimal;
 
-          /** @minimum 0 */
+          /** @exclusiveMinimum 0 */
           nullableDecimal!: Decimal | null;
 
-          /** @minimum 0 */
+          /** @exclusiveMaximum 100 */
           nullishDecimal!: Decimal | null | undefined;
 
           /** @minimum 0 */
@@ -1050,13 +1056,13 @@ ruleTester.run("tag-type-check", tagTypeCheck, {
     // -------------------------------------------------------------------------
     // Builtin constraint broadening: non-broadened tag still reports error
     // -------------------------------------------------------------------------
-    // @maximum is not broadened for x-test/Decimal in the mock registry,
+    // @multipleOf is not broadened for x-test/Decimal in the mock registry,
     // so it still produces a type mismatch.
     {
       code: `
         type Decimal = { _brand: "Decimal" };
         class Form {
-          /** @maximum 100 */
+          /** @multipleOf 0.01 */
           price!: Decimal;
         }
       `,
