@@ -14,6 +14,7 @@ import {
   getTagDefinition,
   hasTypeSemanticCapability,
   readExtensionRegistryFromSettings,
+  stripNullishUnion,
   type SemanticCapability,
 } from "@formspec/analysis/internal";
 
@@ -108,7 +109,7 @@ export const tagTypeCheck = createRule<[], MessageIds>({
           registry?.findTypeByName !== undefined &&
           registry.findBuiltinConstraintBroadening !== undefined
         ) {
-          const typeName = checker.typeToString(effectiveType);
+          const typeName = checker.typeToString(stripNullishUnion(effectiveType));
           const typeResult = registry.findTypeByName(typeName);
           if (typeResult !== undefined) {
             const typeId = `${typeResult.extensionId}/${typeResult.registration.typeName}`;
