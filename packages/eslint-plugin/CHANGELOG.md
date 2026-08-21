@@ -1,5 +1,11 @@
 # @formspec/eslint-plugin
 
+## 0.1.0-alpha.71
+
+### Patch Changes
+
+- [#624](https://github.com/mike-north/formspec/pull/624) [`ea13c1b`](https://github.com/mike-north/formspec/commit/ea13c1be5d42da18880219bf00a47a918c74e2c5) Thanks [@aidencurtis](https://github.com/aidencurtis)! - Allow numeric constraints on optional and nullable registered custom types, including nullable array items, while preserving support for imported branded numeric types.
+
 ## 0.1.0-alpha.70
 
 ### Minor Changes

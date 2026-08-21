@@ -105,6 +105,7 @@
     "fix-format-inheritance-derived-types",
     "fix-large-type-argument-overflow",
     "fix-lint-errors",
+    "fix-nullish-constraint-registry-lookup",
     "fix-path-target-diagnostics",
     "fix-path-target-optional-intermediate",
     "fix-path-target-traversability",
